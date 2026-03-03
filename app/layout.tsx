@@ -4,7 +4,7 @@ import "./globals.css";
 
 const headingFont = Space_Grotesk({
   variable: "--font-heading",
-  subsets: ["latin", "cyrillic"],
+  subsets: ["latin"],
   weight: ["600", "700"],
 });
 
