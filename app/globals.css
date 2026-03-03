@@ -1,0 +1,292 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0d0f14;
+  --panel: #151923;
+  --panel-soft: #1a202c;
+  --line: #ffffff1a;
+  --text: #edf1f7;
+  --muted: #a8b0c0;
+  --accent: #4f8cff;
+  --danger: #ff6b6b;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-body);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0d0f14 0%, #101521 100%);
+  color: var(--text);
+  font-family: var(--font-body), sans-serif;
+}
+
+.app {
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.container {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
+}
+
+.header {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.header h1 {
+  margin: 0;
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(1.4rem, 3.5vw, 2rem);
+  letter-spacing: 0.03em;
+}
+
+.header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.sectionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+input,
+button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: #ffffff3b;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.prilepinTable {
+  min-width: 560px;
+}
+
+.inolTable {
+  min-width: 980px;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 8px;
+  text-align: left;
+  vertical-align: middle;
+  font-size: 0.88rem;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+td input {
+  width: 100%;
+  min-width: 72px;
+}
+
+.errors {
+  margin-top: 10px;
+  border: 1px solid #ff6b6b42;
+  background: #ff6b6b12;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.errors p {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.88rem;
+}
+
+.summaryGrid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summaryGrid article {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  background: #ffffff05;
+}
+
+.summaryGrid h3 {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.summaryGrid p {
+  margin: 2px 0;
+  font-size: 0.88rem;
+}
+
+.formula {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.formula p {
+  margin: 2px 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+code {
+  background: #ffffff10;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 6px;
+}
+
+@media (max-width: 920px) {
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .app {
+    padding: 10px;
+  }
+
+  .panel,
+  .header {
+    border-radius: 10px;
+    padding: 10px;
+  }
+
+  .inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .prilepinTable {
+    min-width: 500px;
+  }
+
+  .prilepinTable th,
+  .prilepinTable td {
+    padding: 7px;
+    font-size: 0.84rem;
+  }
+
+  .inolTable {
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+  }
+
+  .inolTable thead {
+    display: none;
+  }
+
+  .inolTable tbody,
+  .inolTable tr,
+  .inolTable td {
+    display: block;
+    width: 100%;
+  }
+
+  .inolTable tr {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #ffffff04;
+    padding: 8px;
+  }
+
+  .inolTable td {
+    border: 0;
+    border-bottom: 1px dashed #ffffff1a;
+    padding: 7px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.83rem;
+  }
+
+  .inolTable td:last-child {
+    border-bottom: 0;
+    padding-bottom: 2px;
+  }
+
+  .inolTable td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.78rem;
+    flex: 0 0 82px;
+  }
+
+  .inolTable td input,
+  .inolTable td button {
+    width: 100%;
+    min-width: 0;
+  }
+}
