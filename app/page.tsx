@@ -59,6 +59,17 @@ function format(n: number) {
   return n.toFixed(2);
 }
 
+function parseNumericInput(value: string): number {
+  if (value.trim() === "") {
+    return Number.NaN;
+  }
+  return Number(value);
+}
+
+function inputNumberValue(value: number): number | "" {
+  return Number.isFinite(value) ? value : "";
+}
+
 export default function Home() {
   const [oneRepMaxInput, setOneRepMaxInput] = useState("127");
   const [roundStepInput, setRoundStepInput] = useState("2.5");
@@ -131,7 +142,7 @@ export default function Home() {
       prev.map((row) => {
         if (row.id !== id) return row;
         if (key === "weight" || key === "oneRepMax" || key === "reps" || key === "sets" || key === "weekId" || key === "sessionId") {
-          return { ...row, [key]: Number(value) };
+          return { ...row, [key]: parseNumericInput(value) };
         }
         return { ...row, [key]: value };
       }),
@@ -234,25 +245,61 @@ export default function Home() {
                 {inolData.perSet.map((item) => (
                   <tr key={item.set.id}>
                     <td data-label="Неделя">
-                      <input type="number" min="1" step="1" value={item.set.weekId} onChange={(e) => updateRow(item.set.id, "weekId", e.target.value)} />
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={inputNumberValue(item.set.weekId)}
+                        onChange={(e) => updateRow(item.set.id, "weekId", e.target.value)}
+                      />
                     </td>
                     <td data-label="Сессия">
-                      <input type="number" min="1" step="1" value={item.set.sessionId} onChange={(e) => updateRow(item.set.id, "sessionId", e.target.value)} />
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={inputNumberValue(item.set.sessionId)}
+                        onChange={(e) => updateRow(item.set.id, "sessionId", e.target.value)}
+                      />
                     </td>
                     <td data-label="Упражнение">
                       <input value={item.set.exercise} onChange={(e) => updateRow(item.set.id, "exercise", e.target.value)} />
                     </td>
                     <td data-label="Вес">
-                      <input type="number" min="0" step="0.5" value={item.set.weight} onChange={(e) => updateRow(item.set.id, "weight", e.target.value)} />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={inputNumberValue(item.set.weight)}
+                        onChange={(e) => updateRow(item.set.id, "weight", e.target.value)}
+                      />
                     </td>
                     <td data-label="1ПМ">
-                      <input type="number" min="0" step="0.5" value={item.set.oneRepMax} onChange={(e) => updateRow(item.set.id, "oneRepMax", e.target.value)} />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={inputNumberValue(item.set.oneRepMax)}
+                        onChange={(e) => updateRow(item.set.id, "oneRepMax", e.target.value)}
+                      />
                     </td>
                     <td data-label="Сеты">
-                      <input type="number" min="0" step="1" value={item.set.sets} onChange={(e) => updateRow(item.set.id, "sets", e.target.value)} />
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={inputNumberValue(item.set.sets)}
+                        onChange={(e) => updateRow(item.set.id, "sets", e.target.value)}
+                      />
                     </td>
                     <td data-label="Повт.">
-                      <input type="number" min="0" step="1" value={item.set.reps} onChange={(e) => updateRow(item.set.id, "reps", e.target.value)} />
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={inputNumberValue(item.set.reps)}
+                        onChange={(e) => updateRow(item.set.id, "reps", e.target.value)}
+                      />
                     </td>
                     <td data-label="%1ПМ">{item.percent === null ? "-" : `${format(item.percent)}%`}</td>
                     <td data-label="INOL">{item.maxAttempt ? "Максимальная попытка" : item.inol === null ? "-" : format(item.inol)}</td>
