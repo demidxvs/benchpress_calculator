@@ -199,6 +199,52 @@ td input {
   font-size: 0.86rem;
 }
 
+.guideNow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.guideNow p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.guideNow strong {
+  color: var(--text);
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.guideGrid article {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  background: #ffffff05;
+}
+
+.guideGrid h3 {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.guideTable {
+  min-width: 0;
+}
+
+.authorNote {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 4px 0 2px;
+}
+
 code {
   background: #ffffff10;
   border: 1px solid var(--line);
@@ -208,6 +254,10 @@ code {
 
 @media (max-width: 920px) {
   .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .guideGrid {
     grid-template-columns: 1fr;
   }
 }

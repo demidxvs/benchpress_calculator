@@ -1,4 +1,4 @@
-export type InolLevel = "very light" | "light" | "moderate" | "heavy" | "very heavy";
+export type InolLevel = "очень легко" | "легко" | "умеренно" | "тяжело" | "очень тяжело";
 
 export type InolInput = {
   weight: number;
@@ -35,11 +35,11 @@ export class InolValidationError extends Error {
 }
 
 export function interpretInol(inol: number): InolLevel {
-  if (inol < 0.4) return "very light";
-  if (inol < 0.7) return "light";
-  if (inol < 1.0) return "moderate";
-  if (inol <= 1.5) return "heavy";
-  return "very heavy";
+  if (inol < 0.4) return "очень легко";
+  if (inol < 0.7) return "легко";
+  if (inol < 1.0) return "умеренно";
+  if (inol <= 1.5) return "тяжело";
+  return "очень тяжело";
 }
 
 export function calculateInol(input: InolInput): InolResult {
