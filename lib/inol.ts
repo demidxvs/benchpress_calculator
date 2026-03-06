@@ -20,6 +20,7 @@ export type DayOfWeek = "Понедельник" | "Вторник" | "Сред�
 
 export type WorkoutSet = {
   id: string;
+  date: string;
   weekId: number;
   dayOfWeek: DayOfWeek;
   exercise: string;

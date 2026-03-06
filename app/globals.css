@@ -420,6 +420,20 @@ td input {
   grid-column: 1 / -1;
 }
 
+.autoInfo {
+  grid-column: span 3;
+  align-self: end;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.06);
+  color: var(--muted);
+  font-size: 0.84rem;
+  padding: 0 10px;
+}
+
 .addSetPreview {
   margin-top: 12px;
   display: grid;
@@ -620,6 +634,10 @@ code {
   .modalGrid label:nth-child(4),
   .modalGrid label:nth-child(5),
   .modalGrid label:nth-child(6) {
+    grid-column: auto;
+  }
+
+  .autoInfo {
     grid-column: auto;
   }
 

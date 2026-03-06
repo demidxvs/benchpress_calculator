@@ -32,8 +32,7 @@ type SetWithResult = {
 };
 
 type NewSetDraft = {
-  weekId: string;
-  dayOfWeek: DayOfWeek;
+  date: string;
   exercise: "Bench Press";
   weight: string;
   reps: string;
@@ -50,6 +49,7 @@ type SavedDataFile = {
   roundStepInput: string;
   sets: Array<{
     id?: string;
+    date?: string;
     weekId: number;
     dayOfWeek: string;
     exercise?: string;
@@ -105,14 +105,47 @@ function safeDraftNumber(value: number | undefined, fallback: number): string {
   return Number.isFinite(value) ? String(value) : String(fallback);
 }
 
+function getTodayIsoDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getWeekAndDayFromDate(dateIso: string): { weekId: number; dayOfWeek: DayOfWeek } {
+  const [year, month, day] = dateIso.split("-").map(Number);
+  if (!year || !month || !day) {
+    throw new Error("Некорректная дата.");
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const dayIndex = (date.getUTCDay() + 6) % 7;
+  const dayOfWeek = DAY_OF_WEEK_OPTIONS[dayIndex];
+
+  const target = new Date(date);
+  target.setUTCDate(target.getUTCDate() + 3 - ((target.getUTCDay() + 6) % 7));
+  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+  const weekId =
+    1 +
+    Math.round(
+      ((target.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7,
+    );
+
+  return { weekId, dayOfWeek };
+}
+
 export default function Home() {
+  const initialDate = getTodayIsoDate();
+  const initialCalendar = getWeekAndDayFromDate(initialDate);
   const [oneRepMaxInput, setOneRepMaxInput] = useState("127");
   const [roundStepInput, setRoundStepInput] = useState("2.5");
   const [setRows, setSetRows] = useState<WorkoutSet[]>([
     {
       id: "s1",
-      weekId: 1,
-      dayOfWeek: "Понедельник",
+      date: initialDate,
+      weekId: initialCalendar.weekId,
+      dayOfWeek: initialCalendar.dayOfWeek,
       exercise: "Bench Press",
       weight: 100,
       reps: 5,
@@ -124,8 +157,7 @@ export default function Home() {
   const [dataFileError, setDataFileError] = useState<string | null>(null);
   const loadFileInputRef = useRef<HTMLInputElement | null>(null);
   const [newSetDraft, setNewSetDraft] = useState<NewSetDraft>({
-    weekId: "1",
-    dayOfWeek: "Понедельник",
+    date: initialDate,
     exercise: "Bench Press",
     weight: "80",
     reps: "5",
@@ -216,7 +248,15 @@ export default function Home() {
     setSetRows((prev) =>
       prev.map((row) => {
         if (row.id !== id) return row;
-        if (key === "weight" || key === "reps" || key === "sets" || key === "weekId") {
+        if (key === "date") {
+          try {
+            const fromDate = getWeekAndDayFromDate(value);
+            return { ...row, date: value, weekId: fromDate.weekId, dayOfWeek: fromDate.dayOfWeek };
+          } catch {
+            return { ...row, date: value };
+          }
+        }
+        if (key === "weight" || key === "reps" || key === "sets") {
           return { ...row, [key]: parseNumericInput(value) };
         }
         return { ...row, [key]: value };
@@ -227,8 +267,7 @@ export default function Home() {
   function openAddSetModal() {
     const lastSet = setRows[setRows.length - 1];
     setNewSetDraft({
-      weekId: safeDraftNumber(lastSet?.weekId, 1),
-      dayOfWeek: lastSet?.dayOfWeek ?? "Понедельник",
+      date: lastSet?.date ?? getTodayIsoDate(),
       exercise: "Bench Press",
       weight: safeDraftNumber(lastSet?.weight, 80),
       reps: safeDraftNumber(lastSet?.reps, 5),
@@ -253,21 +292,27 @@ export default function Home() {
     }
 
     const candidate = {
-      weekId: parseNumericInput(newSetDraft.weekId),
-      dayOfWeek: newSetDraft.dayOfWeek,
+      date: newSetDraft.date,
       exercise: newSetDraft.exercise.trim(),
       weight: parseNumericInput(newSetDraft.weight),
       reps: parseNumericInput(newSetDraft.reps),
       sets: parseNumericInput(newSetDraft.sets),
     };
+    let fromDate: { weekId: number; dayOfWeek: DayOfWeek };
 
     if (!candidate.exercise) {
       setAddSetError("Укажите название упражнения.");
       return;
     }
 
-    if (!Number.isFinite(candidate.weekId) || candidate.weekId < 1) {
-      setAddSetError("Неделя должна быть больше или равна 1.");
+    if (!candidate.date) {
+      setAddSetError("Укажите корректную дату.");
+      return;
+    }
+    try {
+      fromDate = getWeekAndDayFromDate(candidate.date);
+    } catch {
+      setAddSetError("Дата указана некорректно.");
       return;
     }
 
@@ -287,8 +332,8 @@ export default function Home() {
     }
 
     try {
-      calculateInol({ ...candidate, oneRepMax });
-      setSetRows((prev) => [...prev, { id: `s${Date.now()}`, ...candidate }]);
+      calculateInol({ ...candidate, ...fromDate, oneRepMax });
+      setSetRows((prev) => [...prev, { id: `s${Date.now()}`, ...candidate, ...fromDate }]);
       closeAddSetModal();
     } catch (error) {
       if (error instanceof InolValidationError) {
@@ -316,14 +361,26 @@ export default function Home() {
     }
 
     const raw = value as Record<string, unknown>;
-    const weekId = Number(raw.weekId);
+    const parsedDate = typeof raw.date === "string" ? raw.date : getTodayIsoDate();
     const weight = Number(raw.weight);
     const reps = Number(raw.reps);
     const sets = Number(raw.sets);
+    let fromDate: { weekId: number; dayOfWeek: DayOfWeek };
 
-    if (!Number.isFinite(weekId) || weekId < 1) {
-      throw new Error(`Строка ${index + 1}: неделя должна быть >= 1.`);
+    try {
+      fromDate = getWeekAndDayFromDate(parsedDate);
+    } catch {
+      const fallbackWeekId = Number(raw.weekId);
+      const fallbackDay = raw.dayOfWeek;
+      if (!Number.isFinite(fallbackWeekId) || fallbackWeekId < 1 || typeof fallbackDay !== "string") {
+        throw new Error(`Строка ${index + 1}: дата/неделя в файле некорректна.`);
+      }
+      fromDate = {
+        weekId: fallbackWeekId,
+        dayOfWeek: dayOfWeekFromUnknown(fallbackDay),
+      };
     }
+
     if (!Number.isFinite(weight) || weight < 0) {
       throw new Error(`Строка ${index + 1}: вес должен быть >= 0.`);
     }
@@ -336,8 +393,9 @@ export default function Home() {
 
     return {
       id: typeof raw.id === "string" && raw.id.trim() ? raw.id : `s${Date.now()}-${index}`,
-      weekId,
-      dayOfWeek: dayOfWeekFromUnknown(raw.dayOfWeek),
+      date: parsedDate,
+      weekId: fromDate.weekId,
+      dayOfWeek: fromDate.dayOfWeek,
       exercise: "Bench Press",
       weight,
       reps,
@@ -353,6 +411,7 @@ export default function Home() {
       roundStepInput,
       sets: setRows.map((row) => ({
         id: row.id,
+        date: row.date,
         weekId: row.weekId,
         dayOfWeek: row.dayOfWeek,
         exercise: "Bench Press",
@@ -523,19 +582,19 @@ export default function Home() {
 
                 <div className="modalGrid">
                   <label>
-                    Неделя
-                    <input type="number" min="1" step="1" value={newSetDraft.weekId} onChange={(e) => updateNewSetDraft("weekId", e.target.value)} />
+                    Дата
+                    <input type="date" value={newSetDraft.date} onChange={(e) => updateNewSetDraft("date", e.target.value)} />
                   </label>
-                  <label>
-                    День недели
-                    <select value={newSetDraft.dayOfWeek} onChange={(e) => updateNewSetDraft("dayOfWeek", e.target.value as DayOfWeek)}>
-                      {DAY_OF_WEEK_OPTIONS.map((day) => (
-                        <option key={day} value={day}>
-                          {day}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <div className="autoInfo">
+                    {newSetDraft.date ? (() => {
+                      try {
+                        const fromDate = getWeekAndDayFromDate(newSetDraft.date);
+                        return `Неделя ${fromDate.weekId}, ${fromDate.dayOfWeek}`;
+                      } catch {
+                        return "Укажите корректную дату";
+                      }
+                    })() : "Укажите дату"}
+                  </div>
                   <label className="modalWide">
                     Упражнение
                     <select value={newSetDraft.exercise} onChange={() => updateNewSetDraft("exercise", "Bench Press")}>
@@ -594,6 +653,7 @@ export default function Home() {
             <table className="inolTable">
               <thead>
                 <tr>
+                  <th>Дата</th>
                   <th>Неделя</th>
                   <th>День</th>
                   <th>Упражнение</th>
@@ -609,23 +669,14 @@ export default function Home() {
               <tbody>
                 {inolData.perSet.map((item) => (
                   <tr key={item.set.id}>
+                    <td data-label="Дата">
+                      <input type="date" value={item.set.date} onChange={(e) => updateRow(item.set.id, "date", e.target.value)} />
+                    </td>
                     <td data-label="Неделя">
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={inputNumberValue(item.set.weekId)}
-                        onChange={(e) => updateRow(item.set.id, "weekId", e.target.value)}
-                      />
+                      {item.set.weekId}
                     </td>
                     <td data-label="День">
-                      <select value={item.set.dayOfWeek} onChange={(e) => updateRow(item.set.id, "dayOfWeek", e.target.value)}>
-                        {DAY_OF_WEEK_OPTIONS.map((day) => (
-                          <option key={day} value={day}>
-                            {day}
-                          </option>
-                        ))}
-                      </select>
+                      {item.set.dayOfWeek}
                     </td>
                     <td data-label="Упражнение">
                       <select value="Bench Press" onChange={() => updateRow(item.set.id, "exercise", "Bench Press")}>
