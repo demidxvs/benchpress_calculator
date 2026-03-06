@@ -16,14 +16,9 @@ export type InolResult = {
   level: InolLevel | null;
 };
 
-export type DayOfWeek = "Понедельник" | "Вторник" | "Среда" | "Четверг" | "Пятница" | "Суббота" | "Воскресенье";
-
 export type WorkoutSet = {
   id: string;
-  date: string;
-  weekId: number;
-  dayOfWeek: DayOfWeek;
-  exercise: string;
+  exercise: "Bench Press";
   weight: number;
   reps: number;
   sets: number;
@@ -87,33 +82,9 @@ export function calculateInol(input: InolInput): InolResult {
   };
 }
 
-export function aggregateInolByExercise(sets: WorkoutSet[], oneRepMax: number): Record<string, number> {
-  return sets.reduce<Record<string, number>>((acc, set) => {
-    const result = calculateInol({ ...set, oneRepMax });
-    if (result.inol === null) return acc;
-    acc[set.exercise] = (acc[set.exercise] ?? 0) + result.inol;
-    return acc;
-  }, {});
-}
-
-export function aggregateInolByDay(sets: WorkoutSet[], oneRepMax: number): Record<string, number> {
-  return sets.reduce<Record<string, number>>((acc, set) => {
-    const result = calculateInol({ ...set, oneRepMax });
-    if (result.inol === null) return acc;
-    acc[set.dayOfWeek] = (acc[set.dayOfWeek] ?? 0) + result.inol;
-    return acc;
-  }, {});
-}
-
-export function calculateWeeklyInol(sets: WorkoutSet[], oneRepMax: number): number {
+export function calculateWorkoutInol(sets: WorkoutSet[], oneRepMax: number): number {
   return sets.reduce((sum, set) => {
     const result = calculateInol({ ...set, oneRepMax });
     return sum + (result.inol ?? 0);
   }, 0);
-}
-
-export function weeklyRecommendation(weeklyInol: number): string {
-  if (weeklyInol > 3.5) return "Высокий риск перегруза";
-  if (weeklyInol >= 2.0 && weeklyInol <= 3.0) return "Нормальный диапазон";
-  return "Ниже целевого диапазона, проверьте план";
 }

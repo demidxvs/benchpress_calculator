@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  type DayOfWeek,
   InolValidationError,
-  aggregateInolByExercise,
-  aggregateInolByDay,
   calculateInol,
-  calculateWeeklyInol,
+  calculateWorkoutInol,
   interpretInol,
   type WorkoutSet,
-  weeklyRecommendation,
 } from "../lib/inol";
 
 type Zone = {
@@ -32,31 +28,9 @@ type SetWithResult = {
 };
 
 type NewSetDraft = {
-  date: string;
-  exercise: "Bench Press";
   weight: string;
   reps: string;
   sets: string;
-};
-
-const DAY_OF_WEEK_OPTIONS: DayOfWeek[] = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
-const EXERCISE_OPTIONS = ["Bench Press"] as const;
-
-type SavedDataFile = {
-  version: 1;
-  savedAt: string;
-  oneRepMaxInput: string;
-  roundStepInput: string;
-  sets: Array<{
-    id?: string;
-    date?: string;
-    weekId: number;
-    dayOfWeek: string;
-    exercise?: string;
-    weight: number;
-    reps: number;
-    sets: number;
-  }>;
 };
 
 const PRILEPIN_ZONES: Zone[] = [
@@ -69,15 +43,8 @@ const PRILEPIN_ZONES: Zone[] = [
 const DAILY_INOL_GUIDE = [
   { range: "< 0.4", note: "Слишком легко, стимул может быть недостаточным" },
   { range: "0.4 - 1.0", note: "Оптимально для стабильного прогресса" },
-  { range: "1.0 - 2.0", note: "Тяжелый день, использовать короткими блоками" },
-  { range: "> 2.0", note: "Очень тяжело, использовать редко" },
-];
-
-const WEEKLY_INOL_GUIDE = [
-  { range: "< 2.0", note: "Легкая неделя, восстановление или делоад" },
-  { range: "2.0 - 3.0", note: "Нормальная недельная нагрузка" },
-  { range: "3.0 - 4.0", note: "Высокая усталость, применять ограниченно" },
-  { range: "> 4.0", note: "Риск перегруза, нужен контроль восстановления" },
+  { range: "1.0 - 2.0", note: "Тяжелая тренировка, использовать короткими блоками" },
+  { range: "> 2.0", note: "Очень тяжело, применять редко" },
 ];
 
 function roundToStep(weight: number, step: number) {
@@ -105,47 +72,12 @@ function safeDraftNumber(value: number | undefined, fallback: number): string {
   return Number.isFinite(value) ? String(value) : String(fallback);
 }
 
-function getTodayIsoDate() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getWeekAndDayFromDate(dateIso: string): { weekId: number; dayOfWeek: DayOfWeek } {
-  const [year, month, day] = dateIso.split("-").map(Number);
-  if (!year || !month || !day) {
-    throw new Error("Некорректная дата.");
-  }
-
-  const date = new Date(Date.UTC(year, month - 1, day));
-  const dayIndex = (date.getUTCDay() + 6) % 7;
-  const dayOfWeek = DAY_OF_WEEK_OPTIONS[dayIndex];
-
-  const target = new Date(date);
-  target.setUTCDate(target.getUTCDate() + 3 - ((target.getUTCDay() + 6) % 7));
-  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
-  const weekId =
-    1 +
-    Math.round(
-      ((target.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7,
-    );
-
-  return { weekId, dayOfWeek };
-}
-
 export default function Home() {
-  const initialDate = getTodayIsoDate();
-  const initialCalendar = getWeekAndDayFromDate(initialDate);
   const [oneRepMaxInput, setOneRepMaxInput] = useState("127");
   const [roundStepInput, setRoundStepInput] = useState("2.5");
   const [setRows, setSetRows] = useState<WorkoutSet[]>([
     {
       id: "s1",
-      date: initialDate,
-      weekId: initialCalendar.weekId,
-      dayOfWeek: initialCalendar.dayOfWeek,
       exercise: "Bench Press",
       weight: 100,
       reps: 5,
@@ -154,11 +86,7 @@ export default function Home() {
   ]);
   const [isAddSetModalOpen, setIsAddSetModalOpen] = useState(false);
   const [addSetError, setAddSetError] = useState<string | null>(null);
-  const [dataFileError, setDataFileError] = useState<string | null>(null);
-  const loadFileInputRef = useRef<HTMLInputElement | null>(null);
   const [newSetDraft, setNewSetDraft] = useState<NewSetDraft>({
-    date: initialDate,
-    exercise: "Bench Press",
     weight: "80",
     reps: "5",
     sets: "3",
@@ -200,30 +128,18 @@ export default function Home() {
     if (!Number.isFinite(oneRepMax) || oneRepMax <= 0) {
       return {
         perSet,
-        exerciseTotals: {},
-        dayTotals: {},
-        weeklyInol: 0,
-        weeklyLabel: weeklyRecommendation(0),
+        workoutInol: 0,
       };
     }
 
     const validSets = perSet.filter((item) => !item.error).map((item) => item.set);
-    const exerciseTotals = aggregateInolByExercise(validSets, oneRepMax);
-    const dayTotals = aggregateInolByDay(validSets, oneRepMax);
-    const weeklyInol = calculateWeeklyInol(validSets, oneRepMax);
+    const workoutInol = calculateWorkoutInol(validSets, oneRepMax);
 
     return {
       perSet,
-      exerciseTotals,
-      dayTotals,
-      weeklyInol,
-      weeklyLabel: weeklyRecommendation(weeklyInol),
+      workoutInol,
     };
   }, [oneRepMax, setRows]);
-
-  const dailyInol = useMemo(() => {
-    return Object.values(inolData.dayTotals).reduce((sum, val) => sum + val, 0);
-  }, [inolData.dayTotals]);
 
   function closeAddSetModal() {
     setIsAddSetModalOpen(false);
@@ -248,18 +164,10 @@ export default function Home() {
     setSetRows((prev) =>
       prev.map((row) => {
         if (row.id !== id) return row;
-        if (key === "date") {
-          try {
-            const fromDate = getWeekAndDayFromDate(value);
-            return { ...row, date: value, weekId: fromDate.weekId, dayOfWeek: fromDate.dayOfWeek };
-          } catch {
-            return { ...row, date: value };
-          }
-        }
         if (key === "weight" || key === "reps" || key === "sets") {
           return { ...row, [key]: parseNumericInput(value) };
         }
-        return { ...row, [key]: value };
+        return row;
       }),
     );
   }
@@ -267,8 +175,6 @@ export default function Home() {
   function openAddSetModal() {
     const lastSet = setRows[setRows.length - 1];
     setNewSetDraft({
-      date: lastSet?.date ?? getTodayIsoDate(),
-      exercise: "Bench Press",
       weight: safeDraftNumber(lastSet?.weight, 80),
       reps: safeDraftNumber(lastSet?.reps, 5),
       sets: safeDraftNumber(lastSet?.sets, 3),
@@ -281,10 +187,6 @@ export default function Home() {
     setNewSetDraft((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleOneRepMaxInputChange(value: string) {
-    setOneRepMaxInput(value);
-  }
-
   function saveNewSet() {
     if (!Number.isFinite(oneRepMax) || oneRepMax <= 0) {
       setAddSetError("Сначала укажите корректный 1ПМ в таблице Прилепина.");
@@ -292,29 +194,11 @@ export default function Home() {
     }
 
     const candidate = {
-      date: newSetDraft.date,
-      exercise: newSetDraft.exercise.trim(),
+      exercise: "Bench Press" as const,
       weight: parseNumericInput(newSetDraft.weight),
       reps: parseNumericInput(newSetDraft.reps),
       sets: parseNumericInput(newSetDraft.sets),
     };
-    let fromDate: { weekId: number; dayOfWeek: DayOfWeek };
-
-    if (!candidate.exercise) {
-      setAddSetError("Укажите название упражнения.");
-      return;
-    }
-
-    if (!candidate.date) {
-      setAddSetError("Укажите корректную дату.");
-      return;
-    }
-    try {
-      fromDate = getWeekAndDayFromDate(candidate.date);
-    } catch {
-      setAddSetError("Дата указана некорректно.");
-      return;
-    }
 
     if (!Number.isFinite(candidate.weight) || candidate.weight < 0) {
       setAddSetError("Вес должен быть больше или равен 0.");
@@ -332,8 +216,8 @@ export default function Home() {
     }
 
     try {
-      calculateInol({ ...candidate, ...fromDate, oneRepMax });
-      setSetRows((prev) => [...prev, { id: `s${Date.now()}`, ...candidate, ...fromDate }]);
+      calculateInol({ ...candidate, oneRepMax });
+      setSetRows((prev) => [...prev, { id: `s${Date.now()}`, ...candidate }]);
       closeAddSetModal();
     } catch (error) {
       if (error instanceof InolValidationError) {
@@ -346,136 +230,6 @@ export default function Home() {
 
   function removeRow(id: string) {
     setSetRows((prev) => prev.filter((row) => row.id !== id));
-  }
-
-  function dayOfWeekFromUnknown(value: unknown): DayOfWeek {
-    if (typeof value === "string" && DAY_OF_WEEK_OPTIONS.includes(value as DayOfWeek)) {
-      return value as DayOfWeek;
-    }
-    throw new Error("Неверный день недели в файле.");
-  }
-
-  function setFromUnknown(value: unknown, index: number): WorkoutSet {
-    if (!value || typeof value !== "object") {
-      throw new Error(`Строка ${index + 1}: неверный формат.`);
-    }
-
-    const raw = value as Record<string, unknown>;
-    const parsedDate = typeof raw.date === "string" ? raw.date : getTodayIsoDate();
-    const weight = Number(raw.weight);
-    const reps = Number(raw.reps);
-    const sets = Number(raw.sets);
-    let fromDate: { weekId: number; dayOfWeek: DayOfWeek };
-
-    try {
-      fromDate = getWeekAndDayFromDate(parsedDate);
-    } catch {
-      const fallbackWeekId = Number(raw.weekId);
-      const fallbackDay = raw.dayOfWeek;
-      if (!Number.isFinite(fallbackWeekId) || fallbackWeekId < 1 || typeof fallbackDay !== "string") {
-        throw new Error(`Строка ${index + 1}: дата/неделя в файле некорректна.`);
-      }
-      fromDate = {
-        weekId: fallbackWeekId,
-        dayOfWeek: dayOfWeekFromUnknown(fallbackDay),
-      };
-    }
-
-    if (!Number.isFinite(weight) || weight < 0) {
-      throw new Error(`Строка ${index + 1}: вес должен быть >= 0.`);
-    }
-    if (!Number.isFinite(reps) || reps < 0) {
-      throw new Error(`Строка ${index + 1}: повторы должны быть >= 0.`);
-    }
-    if (!Number.isFinite(sets) || sets < 0) {
-      throw new Error(`Строка ${index + 1}: сеты должны быть >= 0.`);
-    }
-
-    return {
-      id: typeof raw.id === "string" && raw.id.trim() ? raw.id : `s${Date.now()}-${index}`,
-      date: parsedDate,
-      weekId: fromDate.weekId,
-      dayOfWeek: fromDate.dayOfWeek,
-      exercise: "Bench Press",
-      weight,
-      reps,
-      sets,
-    };
-  }
-
-  function saveDataToFile() {
-    const payload: SavedDataFile = {
-      version: 1,
-      savedAt: new Date().toISOString(),
-      oneRepMaxInput,
-      roundStepInput,
-      sets: setRows.map((row) => ({
-        id: row.id,
-        date: row.date,
-        weekId: row.weekId,
-        dayOfWeek: row.dayOfWeek,
-        exercise: "Bench Press",
-        weight: row.weight,
-        reps: row.reps,
-        sets: row.sets,
-      })),
-    };
-
-    const datePart = new Date().toISOString().slice(0, 10);
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `benchpress-data-${datePart}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    setDataFileError(null);
-  }
-
-  function openLoadDataDialog() {
-    loadFileInputRef.current?.click();
-  }
-
-  async function handleLoadDataFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text) as Partial<SavedDataFile> & { setRows?: unknown[] };
-
-      const loadedRawSets = Array.isArray(parsed.sets) ? parsed.sets : Array.isArray(parsed.setRows) ? parsed.setRows : null;
-      if (!loadedRawSets) {
-        throw new Error("Файл не содержит массив сетов.");
-      }
-
-      const loadedSets = loadedRawSets.map((row, index) => setFromUnknown(row, index));
-
-      const nextOneRepMax =
-        typeof parsed.oneRepMaxInput === "string"
-          ? parsed.oneRepMaxInput
-          : Number.isFinite((parsed as { oneRepMax?: unknown }).oneRepMax)
-            ? String((parsed as { oneRepMax?: number }).oneRepMax)
-            : oneRepMaxInput;
-      const nextRoundStep =
-        typeof parsed.roundStepInput === "string"
-          ? parsed.roundStepInput
-          : Number.isFinite((parsed as { roundStep?: unknown }).roundStep)
-            ? String((parsed as { roundStep?: number }).roundStep)
-            : roundStepInput;
-
-      setOneRepMaxInput(nextOneRepMax);
-      setRoundStepInput(nextRoundStep);
-      setSetRows(loadedSets);
-      setDataFileError(null);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Неизвестная ошибка";
-      setDataFileError(`Не удалось загрузить файл: ${message}`);
-    } finally {
-      event.target.value = "";
-    }
   }
 
   const addSetPreview = useMemo(() => {
@@ -506,7 +260,7 @@ export default function Home() {
       <main className="container">
         <header className="header">
           <h1>Таблица Прилепина & INOL</h1>
-          <p>Минималистичный калькулятор: таблица Прилепина + INOL по сетам, тренировке и неделе.</p>
+          <p>Максимально простой калькулятор одной тренировки: 1ПМ, вес, сеты и повторы.</p>
         </header>
 
         <section className="panel">
@@ -514,7 +268,7 @@ export default function Home() {
           <div className="inputs">
             <label>
               1ПМ (кг)
-              <input type="number" min="1" step="0.5" value={oneRepMaxInput} onChange={(e) => handleOneRepMaxInputChange(e.target.value)} />
+              <input type="number" min="1" step="0.5" value={oneRepMaxInput} onChange={(e) => setOneRepMaxInput(e.target.value)} />
             </label>
             <label>
               Шаг округления (кг)
@@ -550,22 +304,14 @@ export default function Home() {
 
         <section className="panel">
           <div className="sectionRow">
-            <h2>INOL калькулятор</h2>
+            <h2>INOL калькулятор (одна тренировка)</h2>
             <div className="sectionActions">
-              <button type="button" className="btnSecondary" onClick={saveDataToFile}>
-                Сохранить в файл
-              </button>
-              <button type="button" className="btnSecondary" onClick={openLoadDataDialog}>
-                Загрузить файл
-              </button>
               <button type="button" className="btnPrimary" onClick={openAddSetModal}>
                 + Добавить сет
               </button>
             </div>
           </div>
           <p className="inolOneRmNote">1ПМ для всех сетов берется из поля выше: {Number.isFinite(oneRepMax) ? format(oneRepMax) : "-"} кг.</p>
-          <input ref={loadFileInputRef} type="file" accept="application/json" className="hiddenFileInput" onChange={handleLoadDataFile} />
-          {dataFileError && <p className="dataFileError">{dataFileError}</p>}
 
           {isAddSetModalOpen && (
             <div className="addSetOverlay" role="presentation" onClick={closeAddSetModal}>
@@ -573,7 +319,7 @@ export default function Home() {
                 <div className="addSetModalHeader">
                   <div>
                     <h3>Добавить новый сет</h3>
-                    <p>Введите параметры, затем нажмите Enter или кнопку сохранения.</p>
+                    <p>Введите только вес, сеты и повторы.</p>
                   </div>
                   <button type="button" className="popoverClose btnSecondary" onClick={closeAddSetModal} aria-label="Закрыть форму">
                     x
@@ -581,30 +327,6 @@ export default function Home() {
                 </div>
 
                 <div className="modalGrid">
-                  <label>
-                    Дата
-                    <input type="date" value={newSetDraft.date} onChange={(e) => updateNewSetDraft("date", e.target.value)} />
-                  </label>
-                  <div className="autoInfo">
-                    {newSetDraft.date ? (() => {
-                      try {
-                        const fromDate = getWeekAndDayFromDate(newSetDraft.date);
-                        return `Неделя ${fromDate.weekId}, ${fromDate.dayOfWeek}`;
-                      } catch {
-                        return "Укажите корректную дату";
-                      }
-                    })() : "Укажите дату"}
-                  </div>
-                  <label className="modalWide">
-                    Упражнение
-                    <select value={newSetDraft.exercise} onChange={() => updateNewSetDraft("exercise", "Bench Press")}>
-                      {EXERCISE_OPTIONS.map((exercise) => (
-                        <option key={exercise} value={exercise}>
-                          {exercise}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
                   <label>
                     Вес (кг)
                     <input type="number" min="0" step="0.5" value={newSetDraft.weight} onChange={(e) => updateNewSetDraft("weight", e.target.value)} />
@@ -653,10 +375,6 @@ export default function Home() {
             <table className="inolTable">
               <thead>
                 <tr>
-                  <th>Дата</th>
-                  <th>Неделя</th>
-                  <th>День</th>
-                  <th>Упражнение</th>
                   <th>Вес</th>
                   <th>Сеты</th>
                   <th>Повт.</th>
@@ -669,24 +387,6 @@ export default function Home() {
               <tbody>
                 {inolData.perSet.map((item) => (
                   <tr key={item.set.id}>
-                    <td data-label="Дата">
-                      <input type="date" value={item.set.date} onChange={(e) => updateRow(item.set.id, "date", e.target.value)} />
-                    </td>
-                    <td data-label="Неделя">
-                      {item.set.weekId}
-                    </td>
-                    <td data-label="День">
-                      {item.set.dayOfWeek}
-                    </td>
-                    <td data-label="Упражнение">
-                      <select value="Bench Press" onChange={() => updateRow(item.set.id, "exercise", "Bench Press")}>
-                        {EXERCISE_OPTIONS.map((exercise) => (
-                          <option key={exercise} value={exercise}>
-                            {exercise}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
                     <td data-label="Вес">
                       <input
                         type="number"
@@ -742,37 +442,20 @@ export default function Home() {
 
           <div className="summaryGrid">
             <article>
-              <h3>По упражнению</h3>
-              {Object.entries(inolData.exerciseTotals).map(([exercise, total]) => (
-                <p key={exercise}>
-                  {exercise}: {format(total)} ({interpretInol(total)})
-                </p>
-              ))}
+              <h3>Одна тренировка</h3>
+              <p>Суммарный INOL: {format(inolData.workoutInol)}</p>
+              <p>{inolData.workoutInol > 0 ? interpretInol(inolData.workoutInol) : "добавьте хотя бы один сет"}</p>
             </article>
 
             <article>
-              <h3>По дню</h3>
-              {Object.entries(inolData.dayTotals).map(([day, total]) => (
-                <p key={day}>
-                  {day}: {format(total)} ({interpretInol(total)})
-                </p>
-              ))}
+              <h3>Формула</h3>
+              <p>
+                <code>INOL = total_reps / (100 - percent_1RM)</code>
+              </p>
+              <p>
+                где <code>total_reps = sets * reps</code>.
+              </p>
             </article>
-
-            <article>
-              <h3>По неделе</h3>
-              <p>Недельный INOL: {format(inolData.weeklyInol)}</p>
-              <p>{inolData.weeklyLabel}</p>
-            </article>
-          </div>
-
-          <div className="formula">
-            <p>
-              Формула: <code>INOL = total_reps / (100 - percent_1RM)</code>
-            </p>
-            <p>
-              где <code>percent_1RM = (weight / one_rep_max) * 100</code>, <code>total_reps = sets * reps</code>.
-            </p>
           </div>
         </section>
 
@@ -780,16 +463,13 @@ export default function Home() {
           <h2>Шкала INOL (ориентир)</h2>
           <div className="guideNow">
             <p>
-              За день: <strong>{format(dailyInol)}</strong>
-            </p>
-            <p>
-              За неделю: <strong>{format(inolData.weeklyInol)}</strong>
+              За тренировку: <strong>{format(inolData.workoutInol)}</strong>
             </p>
           </div>
 
           <div className="guideGrid">
             <article>
-              <h3>Норма за день</h3>
+              <h3>Норма за тренировку</h3>
               <div className="tableWrap">
                 <table className="guideTable">
                   <thead>
@@ -809,34 +489,11 @@ export default function Home() {
                 </table>
               </div>
             </article>
-
-            <article>
-              <h3>Норма за неделю</h3>
-              <div className="tableWrap">
-                <table className="guideTable">
-                  <thead>
-                    <tr>
-                      <th>INOL</th>
-                      <th>Оценка</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {WEEKLY_INOL_GUIDE.map((row) => (
-                      <tr key={row.range}>
-                        <td>{row.range}</td>
-                        <td>{row.note}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </article>
           </div>
         </section>
 
         <footer className="authorNote">Создал Артем Демидов</footer>
       </main>
-
     </div>
   );
 }

@@ -116,16 +116,6 @@ body {
   font-size: 0.86rem;
 }
 
-.hiddenFileInput {
-  display: none;
-}
-
-.dataFileError {
-  margin: 0 0 10px;
-  color: var(--danger);
-  font-size: 0.85rem;
-}
-
 .inputs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -400,38 +390,13 @@ td input {
 
 .modalGrid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 12px;
 }
 
-.modalGrid label:nth-child(1),
-.modalGrid label:nth-child(2) {
-  grid-column: span 3;
-}
-
-.modalGrid label:nth-child(4),
-.modalGrid label:nth-child(5),
-.modalGrid label:nth-child(6) {
-  grid-column: span 2;
-}
-
 .modalWide {
   grid-column: 1 / -1;
-}
-
-.autoInfo {
-  grid-column: span 3;
-  align-self: end;
-  min-height: 42px;
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(59, 130, 246, 0.06);
-  color: var(--muted);
-  font-size: 0.84rem;
-  padding: 0 10px;
 }
 
 .addSetPreview {
@@ -631,13 +596,7 @@ code {
 
   .modalGrid label:nth-child(1),
   .modalGrid label:nth-child(2),
-  .modalGrid label:nth-child(4),
-  .modalGrid label:nth-child(5),
-  .modalGrid label:nth-child(6) {
-    grid-column: auto;
-  }
-
-  .autoInfo {
+  .modalGrid label:nth-child(3) {
     grid-column: auto;
   }
 
