@@ -16,13 +16,14 @@ export type InolResult = {
   level: InolLevel | null;
 };
 
+export type DayOfWeek = "Понедельник" | "Вторник" | "Среда" | "Четверг" | "Пятница" | "Суббота" | "Воскресенье";
+
 export type WorkoutSet = {
   id: string;
   weekId: number;
-  sessionId: number;
+  dayOfWeek: DayOfWeek;
   exercise: string;
   weight: number;
-  oneRepMax: number;
   reps: number;
   sets: number;
 };
@@ -85,27 +86,27 @@ export function calculateInol(input: InolInput): InolResult {
   };
 }
 
-export function aggregateInolByExercise(sets: WorkoutSet[]): Record<string, number> {
+export function aggregateInolByExercise(sets: WorkoutSet[], oneRepMax: number): Record<string, number> {
   return sets.reduce<Record<string, number>>((acc, set) => {
-    const result = calculateInol(set);
+    const result = calculateInol({ ...set, oneRepMax });
     if (result.inol === null) return acc;
     acc[set.exercise] = (acc[set.exercise] ?? 0) + result.inol;
     return acc;
   }, {});
 }
 
-export function aggregateInolBySession(sets: WorkoutSet[]): Record<string, number> {
+export function aggregateInolByDay(sets: WorkoutSet[], oneRepMax: number): Record<string, number> {
   return sets.reduce<Record<string, number>>((acc, set) => {
-    const result = calculateInol(set);
+    const result = calculateInol({ ...set, oneRepMax });
     if (result.inol === null) return acc;
-    acc[set.sessionId] = (acc[set.sessionId] ?? 0) + result.inol;
+    acc[set.dayOfWeek] = (acc[set.dayOfWeek] ?? 0) + result.inol;
     return acc;
   }, {});
 }
 
-export function calculateWeeklyInol(sets: WorkoutSet[]): number {
+export function calculateWeeklyInol(sets: WorkoutSet[], oneRepMax: number): number {
   return sets.reduce((sum, set) => {
-    const result = calculateInol(set);
+    const result = calculateInol({ ...set, oneRepMax });
     return sum + (result.inol ?? 0);
   }, 0);
 }
